@@ -26,3 +26,8 @@ logs/
 *.obj
 *.png
 ***.stl
+**.txt
+*.log
+*.json
+*.txt
+pollen/*
