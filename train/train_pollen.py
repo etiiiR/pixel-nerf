@@ -132,6 +132,7 @@ def generate_dataset_for_single_mesh(stl_file_path, args):
     cam_distance = (max_scaled_dim / 2.0) / tan_half_fovy if tan_half_fovy > 1e-6 else max_scaled_dim * 2.0
     cam_distance *= args.distance_factor
     print(f"Calculated Camera Distance: {cam_distance} (Based on max scaled dim: {max_scaled_dim})")
+    
 
     # --- 5. Generate Camera Poses ---
     camera_positions_unit = get_fibonacci_sphere_points(args.num_views)

@@ -147,6 +147,15 @@ class SRNDataset(torch.utils.data.Dataset):
         self.z_far = 1.8
         self.lindisp = False # SRN verwendet normalerweise lineares Tiefen-Sampling
         # --------------------------------------------------------------------------
+                # Falls near_far.txt existiert, verwende diese Werte
+        sample_obj = self.ids[0]
+        nf_path = os.path.join(self.base_path, sample_obj, "near_far.txt")
+        if os.path.exists(nf_path):
+            with open(nf_path, "r") as f:
+                self.z_near, self.z_far = [float(x) for x in f.readline().split()]
+            print(f"INFO: Loaded near/far from {nf_path}: z_near = {self.z_near}, z_far = {self.z_far}")
+        else:
+            print(f"WARNUNG: near_far.txt nicht gefunden bei {nf_path}, benutze Defaultwerte.")
 
         print(f"Using z_near: {self.z_near}, z_far: {self.z_far}, lindisp: {self.lindisp}")
 
