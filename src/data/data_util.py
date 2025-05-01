@@ -1,7 +1,9 @@
 import os
 import torch
 import torch.nn.functional as F
-import torchvision.transforms.functional_tensor as F_t
+
+
+import torchvision.transforms as F_t
 import torchvision.transforms.functional as TF
 import numpy as np
 import imageio

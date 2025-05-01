@@ -3,6 +3,7 @@
 
 import sys
 import os
+import multiprocessing
 
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -18,6 +19,7 @@ import numpy as np
 import torch.nn.functional as F
 import torch
 from dotmap import DotMap
+warnings.filterwarnings('ignore', category=UserWarning)
 
 
 def extra_args(parser):
@@ -340,5 +342,15 @@ class PixelNeRFTrainer(trainlib.Trainer):
         return vis, vals
 
 
-trainer = PixelNeRFTrainer()
-trainer.start()
+def main():
+    # parse args, set device, build datasets, net, renderer, etc.
+    args, conf = util.args.parse_args(extra_args, training=True, default_ray_batch_size=128)
+    device = util.get_cuda(args.gpu_id[0])
+    # … all your setup …
+    trainer = PixelNeRFTrainer()
+    trainer.start()
+
+if __name__ == "__main__":
+    # On Windows, enable freeze_support if needed:
+    multiprocessing.freeze_support()
+    main()
