@@ -229,8 +229,13 @@ class SRNDataset(torch.utils.data.Dataset):
             # Konvertiere Bild und erstelle Maske
             img_tensor = self.image_to_tensor(img)
             # Maskengenerierung nimmt an, dass Weiss (255) transparent ist
-            mask = (img != 255).all(axis=-1)[..., None].astype(np.uint8) * 255
+            #mask = (img != 255).all(axis=-1)[..., None].astype(np.uint8) * 255
+            dist = np.linalg.norm(img.astype(np.int16) - 255, axis=-1)
+            mask = (dist > 5)[..., None].astype(np.uint8) * 255
             mask_tensor = self.mask_to_tensor(mask)
+
+            if mask_tensor.sum() < 100:
+                print(f"⚠️  Maske fast leer für {rgb_path}")
 
             # Lade Pose
             try:

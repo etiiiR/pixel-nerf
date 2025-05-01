@@ -18,6 +18,8 @@ import util
 import numpy as np
 import torch.nn.functional as F
 import torch
+torch.autograd.set_detect_anomaly(True)
+
 from dotmap import DotMap
 warnings.filterwarnings('ignore', category=UserWarning)
 
