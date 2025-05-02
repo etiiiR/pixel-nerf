@@ -15,57 +15,7 @@ class SRNDataset(torch.utils.data.Dataset):
     """
 
     def __init__(
-        self, path, stage="train", image_size=(128, 128), world_scale=1.0,
-    ):
-        """
-        :param stage train | val | test
-        :param image_size result image size (resizes if different)
-        :param world_scale amount to scale entire world by
-        """
-        super().__init__()
-        self.base_path = path + "_" + stage
-        self.dataset_name = os.path.basename(path)
-
-        print("Loading SRN dataset", self.base_path, "name:", self.dataset_name)
-        self.stage = stage
-        print("base_path", self.base_path)
-        split_suffix = "train" if stage == "train" else "test"
-        self.base_path = os.path.join(path, split_suffix)
-        assert os.path.exists(self.base_path)
-
-        is_chair = "chair" in self.dataset_name
-        if is_chair and stage == "train":
-            # Ugly thing from SRN's public dataset
-            tmp = os.path.join(self.base_path, "chairs_2.0_train")
-            if os.path.exists(tmp):
-                self.base_path = tmp
-
-        self.intrins = sorted(
-            glob.glob(os.path.join(self.base_path, "*", "intrinsics.txt"))
-        )
-        self.image_to_tensor = get_image_to_tensor_balanced()
-        self.mask_to_tensor = get_mask_to_tensor()
-
-        self.image_size = image_size
-        self.world_scale = world_scale
-        self._coord_trans = torch.diag(
-            torch.tensor([1, -1, -1, 1], dtype=torch.float32)
-        )
-
-        if is_chair:
-            self.z_near = 1.25
-            self.z_far = 2.75
-        else:
-            self.z_near = 0.8
-            self.z_far = 1.8
-        self.lindisp = False
-        
-    
-    # --- START CODE ZUM ERSETZEN IN src/data/SRNDataset.py ---
-
-# Ersetzen Sie die GESAMTE __init__ Methode durch diese:
-    def __init__(
-        self, datadir, stage="train", image_size=(128, 128), world_scale=1.0
+        self, datadir, stage="train", image_size=(128, 128), world_scale=0.7
     ):
         """
         :param datadir: path to dataset root directory (e.g., .../pollen)
@@ -87,10 +37,6 @@ class SRNDataset(torch.utils.data.Dataset):
         print(f"INFO: Using list_prefix derived from datadir: '{self.list_prefix}'")
 
         self.dataset_name = self.list_prefix # Verwende den ermittelten Prefix als Namen
-
-        # --- KORREKTE PFAD-KONSTRUKTION ---
-        # self.base_path sollte auf das Verzeichnis zeigen, das die Objektordner
-        # für den aktuellen Split enthält (z.B. C:/.../pixel-nerf/pollen/pollen_train)
         self.base_path = os.path.join(self.path, self.list_prefix + "_" + self.stage)
         # ---------------------------------
 
@@ -145,9 +91,9 @@ class SRNDataset(torch.utils.data.Dataset):
         # Diese Werte könnten für Ihre spezifischen Daten/Skalierung angepasst werden müssen
         self.z_near = 0.8
         self.z_far = 1.8
-        self.lindisp = False # SRN verwendet normalerweise lineares Tiefen-Sampling
+        self.lindisp = True # SRN verwendet normalerweise lineares Tiefen-Sampling
         # --------------------------------------------------------------------------
-                # Falls near_far.txt existiert, verwende diese Werte
+        # Falls near_far.txt existiert, verwende diese Werte
         sample_obj = self.ids[0]
         nf_path = os.path.join(self.base_path, sample_obj, "near_far.txt")
         if os.path.exists(nf_path):
@@ -156,7 +102,8 @@ class SRNDataset(torch.utils.data.Dataset):
             print(f"INFO: Loaded near/far from {nf_path}: z_near = {self.z_near}, z_far = {self.z_far}")
         else:
             print(f"WARNUNG: near_far.txt nicht gefunden bei {nf_path}, benutze Defaultwerte.")
-
+        self.z_near = 1.5
+        self.z_far = 5
         print(f"Using z_near: {self.z_near}, z_far: {self.z_far}, lindisp: {self.lindisp}")
 
 # --- ENDE DES CODES ZUM ERSETZEN ---
