@@ -102,8 +102,6 @@ class SRNDataset(torch.utils.data.Dataset):
             print(f"INFO: Loaded near/far from {nf_path}: z_near = {self.z_near}, z_far = {self.z_far}")
         else:
             print(f"WARNUNG: near_far.txt nicht gefunden bei {nf_path}, benutze Defaultwerte.")
-        self.z_near = 1.5
-        self.z_far = 5
         print(f"Using z_near: {self.z_near}, z_far: {self.z_far}, lindisp: {self.lindisp}")
 
 # --- ENDE DES CODES ZUM ERSETZEN ---
