@@ -57,7 +57,7 @@ def extra_args(parser):
 
 # Parse args and config
 args, conf = util.args.parse_args(
-    extra_args, default_expname="srn_car", default_data_format="srn"
+    extra_args, default_expname="pollen", default_data_format="srn"
 )
 args.resume = True
 
@@ -84,7 +84,7 @@ render_poses = torch.stack([
 rays = util.gen_rays(render_poses, W, H, focal, z_near, z_far).to(device=device)
 
 # Input files
-inputs = [os.path.join(args.input, f) for f in os.listdir(args.input) if f.endswith("_normalize.png")]
+inputs = [os.path.join(args.input, f) for f in os.listdir(args.input) if f.endswith("001.png")]
 os.makedirs(args.output, exist_ok=True)
 if not inputs:
     print("No _normalize.png found in input dir.")

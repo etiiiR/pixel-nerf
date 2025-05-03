@@ -15,7 +15,7 @@ class SRNDataset(torch.utils.data.Dataset):
     """
 
     def __init__(
-        self, datadir, stage="train", image_size=(128, 128), world_scale=0.7
+        self, datadir, stage="train", image_size=(128, 128), world_scale=1.0
     ):
         """
         :param datadir: path to dataset root directory (e.g., .../pollen)
@@ -165,11 +165,19 @@ class SRNDataset(torch.utils.data.Dataset):
             pose_path = pose_paths[i]
 
             # Lade Bild
+            # Lade Bild mit Alphakanal und setze weißen Hintergrund
             try:
-                img = imageio.imread(rgb_path)[..., :3] # Lade RGB
+                img_rgba = imageio.imread(rgb_path)
+                if img_rgba.shape[-1] == 4:
+                    alpha = img_rgba[..., 3:] / 255.0
+                    img = img_rgba[..., :3] * alpha + 255 * (1 - alpha)  # weißer Hintergrund
+                    img = img.astype(np.uint8)
+                else:
+                    img = img_rgba[..., :3]
             except Exception as e:
                 print(f"WARNUNG: Überspringe Ansicht {i} für Objekt {object_id} wegen Fehler beim Laden des Bildes: {e}")
-                continue # Überspringe diese Ansicht, wenn das Bild nicht geladen werden kann
+                continue
+
 
             # Konvertiere Bild und erstelle Maske
             img_tensor = self.image_to_tensor(img)

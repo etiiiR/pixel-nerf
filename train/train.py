@@ -68,7 +68,7 @@ print(
 net = make_model(conf["model"]).to(device=device)
 net.stop_encoder_grad = args.freeze_enc
 if args.freeze_enc:
-    print("Encoder frozen")
+    #print("Encoder frozen")
     net.encoder.eval()
 
 renderer = NeRFRenderer.from_conf(conf["renderer"], lindisp=dset.lindisp,).to(
@@ -109,6 +109,7 @@ class PixelNeRFTrainer(trainlib.Trainer):
 
         self.z_near = dset.z_near
         self.z_far = dset.z_far
+        
 
         self.use_bbox = args.no_bbox_step > 0
 

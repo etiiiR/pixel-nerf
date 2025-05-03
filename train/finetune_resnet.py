@@ -37,6 +37,13 @@ def extra_args(parser):
         help="Number of source views (multiview); put multiple (space delim) to pick randomly per batch ('NV')",
     )
     parser.add_argument(
+        "--image_size",
+        type=int,
+        nargs=2, # Expect two integers (height, width)
+        default=[224, 224], # Default to 224x224 for ResNet finetuning
+        help="Target image size (height width) for resizing during finetuning"
+    )
+    parser.add_argument(
         "--freeze_enc",
         action="store_true",
         default=False,
@@ -47,12 +54,6 @@ def extra_args(parser):
         help="Number of initial epochs to keep encoder frozen before fine-tuning"
     )
     
-    parser.add_argument(
-        "--vis_step",
-        type=int,
-        default=1,
-        help="Step to visualize training progress",
-    )
     parser.add_argument(
         "--no_bbox_step",
         type=int,
@@ -73,7 +74,13 @@ args, conf = util.args.parse_args(extra_args, training=True, default_ray_batch_s
 device = util.get_cuda(args.gpu_id[0])
 
 # datasets
-dset, val_dset, _ = get_split_dataset(args.dataset_format, args.datadir)
+#dset, val_dset, _ = get_split_dataset(args.dataset_format, args.datadir)
+dset, val_dset, _ = get_split_dataset(
+    args.dataset_format,
+    args.datadir,
+    image_size=tuple(args.image_size) # Pass the specific size here
+    # ** potentially other kwargs if needed for SRNDataset **
+)
 print(f"dset z_near {dset.z_near}, z_far {dset.z_far}, lindisp {dset.lindisp}")
 
 # build model
@@ -128,7 +135,7 @@ class PixelNeRFTrainer(trainlib.Trainer):
         self.z_near = dset.z_near
         self.z_far  = dset.z_far
         self.use_bbox = args.no_bbox_step > 0
-        self.vis_steps = args.vis_step
+
     
     def post_batch(self, epoch, batch):
         renderer.sched_step(args.batch_size)
