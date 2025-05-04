@@ -276,6 +276,9 @@ They are of the form
 }
 ```
 
+
+ "C:\Program Files\Blender Foundation\Blender 4.4\blender.exe" -b  --addons io_mesh_stl  --python ".\headless_Blender.py"
+
 # Acknowledgements
 
 Parts of the code were based on from kwea123's NeRF implementation: https://github.com/kwea123/nerf_pl.
