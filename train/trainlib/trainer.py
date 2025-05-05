@@ -109,6 +109,7 @@ class Trainer:
         Ran after each batch
         """
         pass
+    
 
     def extra_save_state(self):
         """

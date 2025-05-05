@@ -101,16 +101,32 @@ def write_pose(data_root, pid, split_key, idx, c2w):
             f.write(" ".join(f"{v:.16f}" for v in row) + "\n")
 
 # === CENTER & SCALE WITH ORIGIN SETTING ===
-def center_and_scale(obj):
+def center_and_scale(obj, target_radius):
+    # reset transforms
     bpy.ops.object.select_all(action='DESELECT')
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
-    obj.location = (0.0, 0.0, 0.0)
-    obj.scale = (0.1, 0.1, 0.1)
+    obj.location = (0,0,0)
+    obj.rotation_euler = (0,0,0)
+    obj.scale = (1,1,1)
+    bpy.context.view_layer.update()
+
+    # compute current radius
+    vs = [obj.matrix_world @ v.co for v in obj.data.vertices]
+    r = max((v - obj.location).length for v in vs)
+    if r == 0: return
+
+    # scale so new radius == target_radius
+    s = target_radius / r
+    obj.scale = (s, s, s)
+    bpy.context.view_layer.update()
+
+    # re‑origin & bake scale
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    obj.location = (0.0, 0.0, 0.0)
+    obj.location = (0,0,0)
     bpy.context.view_layer.update()
+
 
 # === RENDER LOOP ===
 def rotate_and_render(data_root, pid, obj, cam):
@@ -187,9 +203,10 @@ def main():
         obj = bpy.context.selected_objects[0]
         pid = os.path.splitext(fn)[0]
         obj.name = pid
-        center_and_scale(obj)
+        TARGET = RADIUS * 0.7   # 0.2 * 10.0 == 2.0 units
+        center_and_scale(obj, TARGET)
         rotate_and_render(DATA_ROOT, pid, obj, cam)
-
+        
     print("✅ All done.")
 
 if __name__ == "__main__":

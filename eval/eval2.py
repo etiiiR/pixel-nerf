@@ -57,7 +57,7 @@ def extra_args(parser):
 
 # Parse args and config
 args, conf = util.args.parse_args(
-    extra_args, default_expname="pollen", default_data_format="srn"
+    extra_args, default_expname="snr", default_data_format="srn"
 )
 args.resume = True
 

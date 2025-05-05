@@ -4,10 +4,12 @@
 import sys
 import os
 import multiprocessing
-
+from huggingface_hub import upload_folder
+import datetime
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 )
+from dotenv import load_dotenv
 
 import warnings
 import trainlib
@@ -22,7 +24,7 @@ torch.autograd.set_detect_anomaly(True)
 
 from dotmap import DotMap
 warnings.filterwarnings('ignore', category=UserWarning)
-
+load_dotenv()  # loads .env into os.environ
 
 def extra_args(parser):
     parser.add_argument(
@@ -68,7 +70,7 @@ print(
 net = make_model(conf["model"]).to(device=device)
 net.stop_encoder_grad = args.freeze_enc
 if args.freeze_enc:
-    #print("Encoder frozen")
+    print("Encoder frozen")
     net.encoder.eval()
 
 renderer = NeRFRenderer.from_conf(conf["renderer"], lindisp=dset.lindisp,).to(
@@ -115,9 +117,55 @@ class PixelNeRFTrainer(trainlib.Trainer):
 
     def post_batch(self, epoch, batch):
         renderer.sched_step(args.batch_size)
-
+        
     def extra_save_state(self):
+        # Save renderer state as before
         torch.save(renderer.state_dict(), self.renderer_state_path)
+        print(f"Saved renderer state to {self.renderer_state_path}")
+        # Calculate current epoch based on _iter file and dataset size
+        try:
+            iter_path = os.path.join(self.args.checkpoints_path, self.args.name, "_iter")
+            state = torch.load(iter_path)
+            global_step = state.get("iter", 0)
+            epoch = global_step // self.num_total_batches
+            print(f"[HF Upload] Current epoch: {epoch}")
+        except Exception as e:
+            print(f"[HF Upload] Could not determine epoch from _iter: {e}")
+            return
+
+        # Upload every 30 epochs
+        if epoch % 50 != 0 or epoch == 0:
+            return
+
+        # Prevent duplicate uploads
+        last_uploaded_path = os.path.join(self.args.checkpoints_path, self.args.name, "_last_hf_upload.txt")
+        if os.path.exists(last_uploaded_path):
+            try:
+                with open(last_uploaded_path, "r") as f:
+                    last = int(f.read().strip())
+                    if last == epoch:
+                        return
+            except:
+                pass  # fallback: continue upload
+
+        # Perform upload
+        ckpt_dir = os.path.join(self.args.checkpoints_path, self.args.name)
+        print(f"[HF Upload] Uploading checkpoint for epoch {epoch} from {ckpt_dir}...")
+
+        try:
+            upload_folder(
+                folder_path=ckpt_dir,
+                repo_id="Etiiir/PixelNerf_Pollen",
+                repo_type="model",
+                commit_message=f"Upload at epoch {epoch}",
+                path_in_repo=f"checkpoints/epoch_{epoch}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                token=os.environ.get("HF_TOKEN", None),
+            )
+            with open(last_uploaded_path, "w") as f:
+                f.write(str(epoch))
+            print(f"[HF Upload] ✅ Epoch {epoch} uploaded.")
+        except Exception as e:
+            print(f"[HF Upload] ❌ Failed to upload: {e}")
 
     def calc_losses(self, data, is_train=True, global_step=0):
         if "images" not in data:
