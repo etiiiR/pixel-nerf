@@ -34,4 +34,4 @@ pollen/*
 *.mp4
 pollen/*
 
-.env
+.envpollen/
