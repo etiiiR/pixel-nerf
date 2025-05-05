@@ -32,4 +32,6 @@ logs/
 *.txt
 pollen/*
 *.mp4
+pollen/*
+
 .env
