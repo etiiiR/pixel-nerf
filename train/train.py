@@ -20,6 +20,7 @@ import util
 import numpy as np
 import torch.nn.functional as F
 import torch
+
 torch.autograd.set_detect_anomaly(True)
 
 from dotmap import DotMap
@@ -394,14 +395,26 @@ class PixelNeRFTrainer(trainlib.Trainer):
 
 
 def main():
-    # parse args, set device, build datasets, net, renderer, etc.
+    import torch
+
+    # Parse args and config
     args, conf = util.args.parse_args(extra_args, training=True, default_ray_batch_size=128)
+
+    # Log detected GPUs
+    print(f"🧠 Requested GPU IDs: {args.gpu_id}")
+    print(f"🚀 CUDA available: {torch.cuda.is_available()}")
+    print(f"📊 Visible devices: {torch.cuda.device_count()}")
+    for i in args.gpu_id:
+        print(f" - GPU {i}: {torch.cuda.get_device_name(i)}")
+
+    # Set primary device (first in list)
     device = util.get_cuda(args.gpu_id[0])
-    # … all your setup …
-    trainer = PixelNeRFTrainer()
+
+    # Build datasets, model, renderer etc. inside trainer
+    trainer = PixelNeRFTrainer(args, conf, device)  # pass args/device if needed
     trainer.start()
 
 if __name__ == "__main__":
-    # On Windows, enable freeze_support if needed:
+    import multiprocessing
     multiprocessing.freeze_support()
     main()

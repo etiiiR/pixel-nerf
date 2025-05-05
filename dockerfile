@@ -32,4 +32,4 @@ RUN mkdir -p pollen && \
     git lfs clone https://huggingface.co/datasets/Etiiir/Pollen .
 
 # Optional: expose a port or entrypoint
-CMD ["python3", "./train/train.py", "-n", "pollen", "-c", "conf/exp/pollen.conf", "-D", "pollen", "--gpu_id=0", "--resume"]
+#CMD ["python3", "./train/train.py", "-n", "pollen", "-c", "conf/exp/pollen.conf", "-D", "pollen", "--gpu_id=0", "--resume"]
