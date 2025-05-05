@@ -21,6 +21,10 @@ import numpy as np
 import torch.nn.functional as F
 import torch
 
+print("🚀 CUDA available:", torch.cuda.is_available())
+print("🧠 CUDA device count:", torch.cuda.device_count())
+print("📛 CUDA device name:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "None")
+
 torch.autograd.set_detect_anomaly(True)
 
 from dotmap import DotMap
@@ -29,7 +33,7 @@ load_dotenv()  # loads .env into os.environ
 
 def extra_args(parser):
     parser.add_argument(
-        "--batch_size", "-B", type=int, default=4, help="Object batch size ('SB')"
+        "--batch_size", "-B", type=int, default=8, help="Object batch size ('SB')"
     )
     parser.add_argument(
         "--nviews",
@@ -61,8 +65,9 @@ def extra_args(parser):
 
 
 args, conf = util.args.parse_args(extra_args, training=True, default_ray_batch_size=128)
-device = util.get_cuda(args.gpu_id[0])
 
+device = util.get_cuda(args.gpu_id[0])
+print("Using device", device)
 dset, val_dset, _ = get_split_dataset(args.dataset_format, args.datadir)
 print(
     "dset z_near {}, z_far {}, lindisp {}".format(dset.z_near, dset.z_far, dset.lindisp)
@@ -395,26 +400,11 @@ class PixelNeRFTrainer(trainlib.Trainer):
 
 
 def main():
-    import torch
-
-    # Parse args and config
-    args, conf = util.args.parse_args(extra_args, training=True, default_ray_batch_size=128)
-
-    # Log detected GPUs
-    print(f"🧠 Requested GPU IDs: {args.gpu_id}")
-    print(f"🚀 CUDA available: {torch.cuda.is_available()}")
-    print(f"📊 Visible devices: {torch.cuda.device_count()}")
-    for i in args.gpu_id:
-        print(f" - GPU {i}: {torch.cuda.get_device_name(i)}")
-
-    # Set primary device (first in list)
-    device = util.get_cuda(args.gpu_id[0])
-
-    # Build datasets, model, renderer etc. inside trainer
-    trainer = PixelNeRFTrainer(args, conf, device)  # pass args/device if needed
+    # parse args, set device, build datasets, net, renderer, etc.
+    trainer = PixelNeRFTrainer()
     trainer.start()
 
 if __name__ == "__main__":
-    import multiprocessing
+    # On Windows, enable freeze_support if needed:
     multiprocessing.freeze_support()
     main()
