@@ -57,12 +57,13 @@ def extra_args(parser):
 
 # Parse args and config
 args, conf = util.args.parse_args(
-    extra_args, default_expname="snr", default_data_format="srn"
+    extra_args, default_expname="pollen", default_data_format="pollen"
 )
 args.resume = True
 
 # Device & model
 device = util.get_cuda(args.gpu_id[0])
+print(conf["model"])
 net = make_model(conf["model"]).to(device=device).load_weights(args)
 renderer = NeRFRenderer.from_conf(
     conf["renderer"], eval_batch_size=args.ray_batch_size
