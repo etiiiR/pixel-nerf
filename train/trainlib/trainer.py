@@ -104,9 +104,14 @@ class Trainer:
             if not self.managed_weight_saving and os.path.exists(
                 self.default_net_state_path
             ):
-                net.load_state_dict(
-                    torch.load(self.default_net_state_path, map_location=device)
-                )
+                state_dict = torch.load(self.default_net_state_path, map_location=device)
+                try:
+                    net.load_state_dict(state_dict)
+                except RuntimeError as e:
+                    if isinstance(net, torch.nn.DataParallel):
+                        net.module.load_state_dict(state_dict)
+                    else:
+                        raise e
 
         self.visual_path = os.path.join(self.args.visual_path, self.args.name)
         self.conf = conf
@@ -199,9 +204,8 @@ class Trainer:
                         if self.managed_weight_saving:
                             self.net.save_weights(self.args)
                         else:
-                            torch.save(
-                                self.net.state_dict(), self.default_net_state_path
-                            )
+                            net_to_save = self.net.module if isinstance(self.net, torch.nn.DataParallel) else self.net
+                            torch.save(net_to_save.state_dict(), self.default_net_state_path)
                         torch.save(self.optim.state_dict(), self.optim_state_path)
                         if self.lr_scheduler is not None:
                             torch.save(
