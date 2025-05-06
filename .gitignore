@@ -36,3 +36,4 @@ pollen/*
 
 .envpollen/
 *.env
+/pollen
