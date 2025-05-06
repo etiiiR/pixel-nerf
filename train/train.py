@@ -33,14 +33,18 @@ load_dotenv()  # loads .env into os.environ
 
 def extra_args(parser):
     parser.add_argument(
-        "--batch_size", "-B", type=int, default=8, help="Object batch size ('SB')"
+        "--batch_size", "-B", type=int, default=4, help="Object batch size ('SB')"
     )
     parser.add_argument(
         "--nviews",
         "-V",
         type=str,
-        default="1",
+        default="2",
         help="Number of source views (multiview); put multiple (space delim) to pick randomly per batch ('NV')",
+    )
+    parser.add_argument(
+            "--gamma_delay", type=int, default=0,
+            help="Number of scheduler.step() calls to wait before applying gamma decay"
     )
     parser.add_argument(
         "--freeze_enc",
@@ -64,7 +68,7 @@ def extra_args(parser):
     return parser
 
 
-args, conf = util.args.parse_args(extra_args, training=True, default_ray_batch_size=128)
+args, conf = util.args.parse_args(extra_args, training=True, default_ray_batch_size=256)
 
 device = util.get_cuda(args.gpu_id[0])
 print("Using device", device)
@@ -128,7 +132,7 @@ class PixelNeRFTrainer(trainlib.Trainer):
     def extra_save_state(self):
         # Save renderer state as before
         torch.save(renderer.state_dict(), self.renderer_state_path)
-        print(f"Saved renderer state to {self.renderer_state_path}")
+        """ print(f"Saved renderer state to {self.renderer_state_path}")
         # Calculate current epoch based on _iter file and dataset size
         try:
             iter_path = os.path.join(self.args.checkpoints_path, self.args.name, "_iter")
@@ -172,7 +176,7 @@ class PixelNeRFTrainer(trainlib.Trainer):
                 f.write(str(epoch))
             print(f"[HF Upload] ✅ Epoch {epoch} uploaded.")
         except Exception as e:
-            print(f"[HF Upload] ❌ Failed to upload: {e}")
+            print(f"[HF Upload] ❌ Failed to upload: {e}") """
 
     def calc_losses(self, data, is_train=True, global_step=0):
         if "images" not in data:

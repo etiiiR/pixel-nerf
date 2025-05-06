@@ -4,6 +4,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 import tqdm
 import warnings
+from torch.optim.lr_scheduler import LambdaLR
 
 
 class Trainer:
@@ -46,9 +47,14 @@ class Trainer:
 
         # Currently only Adam supported
         self.optim = torch.optim.Adam(net.parameters(), lr=args.lr)
+        # delay gamma until after `args.gamma_delay` scheduler steps
         if args.gamma != 1.0:
-            self.lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
-                optimizer=self.optim, gamma=args.gamma
+            delay = getattr(args, "gamma_delay", 0)
+            self.lr_scheduler = LambdaLR(
+                self.optim,
+                lr_lambda=lambda epoch: 1.0
+                    if epoch < delay
+                    else args.gamma ** (epoch - delay)
             )
         else:
             self.lr_scheduler = None
@@ -57,6 +63,7 @@ class Trainer:
         self.managed_weight_saving = hasattr(net, "load_weights")
         if self.managed_weight_saving:
             net.load_weights(self.args)
+            
         self.iter_state_path = "%s/%s/_iter" % (
             self.args.checkpoints_path,
             self.args.name,
@@ -150,6 +157,7 @@ class Trainer:
         test_data_iter = data_loop(self.test_data_loader)
 
         step_id = self.start_iter_id
+        print("Starting training at step", step_id)
 
         progress = tqdm.tqdm(bar_format="[{rate_fmt}] ")
         for epoch in range(self.num_epochs):

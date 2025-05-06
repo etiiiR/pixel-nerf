@@ -29,7 +29,7 @@ def extra_args(parser):
         "--nviews",
         "-V",
         type=str,
-        default="1",
+        default="2",
         help="Number of source views (multiview); put multiple (space delim) to pick randomly per batch ('NV')",
     )
     parser.add_argument(
@@ -37,6 +37,11 @@ def extra_args(parser):
         action="store_true",
         default=None,
         help="Freeze encoder weights and only train MLP",
+    )
+    
+    parser.add_argument(
+            "--gamma_delay", type=int, default=0,
+            help="Number of scheduler.step() calls to wait before applying gamma decay"
     )
 
     parser.add_argument(
