@@ -74,6 +74,7 @@ print(
 )
 
 net = make_model(conf["model"]).to(device=device)
+print(conf["model"])
 net.stop_encoder_grad = args.freeze_enc
 if args.freeze_enc:
     print("Encoder frozen")

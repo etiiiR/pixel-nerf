@@ -18,14 +18,16 @@ RUN git lfs install
 # Set working directory
 WORKDIR /workspace
 
-# Clone the PixelNeRF repository
-RUN git clone https://github.com/etiiiR/pixel-nerf.git
+# Clone the PixelNeRF repository with cache-busting
+ARG CACHEBUST=1
+RUN rm -rf pixel-nerf && git clone https://github.com/etiiiR/pixel-nerf.git
+
 WORKDIR /workspace/pixel-nerf
 
 # Install Python dependencies
 RUN pip3 install --upgrade pip
 
-# ✅ Install CUDA-enabled PyTorch for CUDA 11.8
+# Install CUDA-enabled PyTorch for CUDA 11.8
 RUN pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 
 # Install other Python requirements
@@ -36,5 +38,5 @@ RUN mkdir -p pollen && \
     cd pollen && \
     git lfs clone https://huggingface.co/datasets/Etiiir/Pollen .
 
-# (Optional) Set default training command
+# Optional default training command
 # CMD ["python3", "train/train.py", "-n", "pollen", "-c", "conf/exp/pollen.conf", "-D", "pollen", "--gpu_id=0", "--resume"]
