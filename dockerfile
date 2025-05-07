@@ -32,9 +32,11 @@ RUN pip3 install torch torchvision --index-url https://download.pytorch.org/whl/
 RUN pip3 install -r requirements.txt
 
 # Clone Hugging Face dataset using Git LFS
-RUN mkdir -p pollen && \
-    cd pollen && \
-    git lfs clone https://huggingface.co/datasets/Etiiir/Pollen .
+RUN rm -rf /workspace/pollen && \
+    mkdir -p /workspace/pollen && \
+    cd /workspace && \
+    git lfs install && \
+    git lfs clone https://huggingface.co/datasets/Etiiir/Pollen pollen
 
 # Optional default command
 # CMD ["python3", "train/train.py", "-n", "pollen", "-c", "conf/exp/pollen.conf", "-D", "pollen", "--gpu_id=0", "--resume"]
