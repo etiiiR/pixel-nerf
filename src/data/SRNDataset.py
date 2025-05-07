@@ -58,8 +58,8 @@ class SRNDataset(torch.utils.data.Dataset):
         )
         is_test = True
         if is_test:
-            self.z_near = 0.5
-            self.z_far = 2.0
+            self.z_near = 0.3
+            self.z_far = 3.0
         else:
             self.z_near = 0.8
             self.z_far = 1.8
