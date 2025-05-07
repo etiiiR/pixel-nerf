@@ -37,12 +37,12 @@ def extra_args(parser):
         help="Output image size: one or two ints (W H)",
     )
     parser.add_argument("--focal", type=float, default=131.25, help="Focal length")
-    parser.add_argument("--radius", type=float, default=1.3, help="Camera distance")
-    parser.add_argument("--z_near", type=float, default=0.8)
-    parser.add_argument("--z_far", type=float, default=1.8)
+    parser.add_argument("--radius", type=float, default=1.5, help="Camera distance")
+    parser.add_argument("--z_near", type=float, default=2)
+    parser.add_argument("--z_far", type=float, default=7.8)
     parser.add_argument("--elevation", "-e", type=float, default=0.0,
                         help="Elevation angle (neg=above)")
-    parser.add_argument("--num_views", type=int, default=24,
+    parser.add_argument("--num_views", type=int, default=32,
                         help="Number of rotated render views")
     parser.add_argument("--fps", type=int, default=15, help="FPS for video")
     parser.add_argument("--gif", action="store_true", help="Export GIF instead of MP4")

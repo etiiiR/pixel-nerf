@@ -3,6 +3,8 @@
 
 import sys
 import os
+import matplotlib.pyplot as plt
+import imageio
 import multiprocessing
 from huggingface_hub import upload_folder
 import datetime
@@ -398,6 +400,38 @@ class PixelNeRFTrainer(trainlib.Trainer):
         psnr = util.psnr(rgb_psnr, gt)
         vals = {"psnr": psnr}
         print("psnr", psnr)
+        
+        debug_outdir = os.path.join(self.args.checkpoints_path, self.args.name, "vis_debug")
+        os.makedirs(debug_outdir, exist_ok=True)
+
+        step_str = f"{global_step:06d}"
+        imageio.imwrite(os.path.join(debug_outdir, f"rgb_{step_str}.png"), (rgb_psnr * 255).astype(np.uint8))
+        imageio.imwrite(os.path.join(debug_outdir, f"alpha_{step_str}.png"), (alpha_fine_np * 255).astype(np.uint8))
+        imageio.imwrite(os.path.join(debug_outdir, f"depth_{step_str}.png"), (depth_fine_np / np.max(depth_fine_np + 1e-8) * 255).astype(np.uint8))
+
+        # === Optional: visualize central density slice ===
+        try:
+            res = 256
+            grid = torch.linspace(-0.5, 0.5, res, device=device)
+            xs, ys, zs = torch.meshgrid(grid, grid, grid, indexing='ij')
+            pts = torch.stack([xs, ys, zs], -1).reshape(-1, 3)
+
+            sigma_vals = []
+            for i in range(0, pts.shape[0], 65536):
+                p = pts[i:i+65536]
+                viewdirs = torch.zeros((1, p.shape[0], 3), device=device)
+                out = net(p[None], coarse=True, viewdirs=viewdirs)
+                sigma_vals.append(out[0, :, 3])
+
+            sigma = torch.cat(sigma_vals).relu().view(res, res, res).cpu().numpy()
+            central_slice = sigma[res // 2]
+            plt.imshow(central_slice, cmap='inferno')
+            plt.colorbar()
+            plt.title("Central Sigma Slice (Z-axis)")
+            plt.savefig(os.path.join(debug_outdir, f"sigma_zslice_{step_str}.png"))
+            plt.close()
+        except Exception as e:
+            print(f"⚠️ Failed to compute sigma slice: {e}")
 
         # set the renderer network back to train mode
         renderer.train()
