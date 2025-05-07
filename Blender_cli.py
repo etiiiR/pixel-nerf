@@ -13,8 +13,8 @@ addon_utils.enable("io_mesh_stl")
 IMG_RES = 128
 FX = FY = 131.25
 CX = CY = IMG_RES / 2.0
-STL_DIR = r"C:/Users/super/Documents/Github/pixel-nerf/data/meshes"
-DATA_ROOT = r"C:/Users/super/Documents/Github/pixel-nerf/data"
+STL_DIR = r"C:/Users/super/Documents/Github/pixel-nerf/data/meshes" # Adjust if your path is different
+DATA_ROOT = r"C:/Users/super/Documents/Github/pixel-nerf/data_new"    # Adjust if your path is different
 VIEWS = 128
 RADIUS = 10.0
 SPLITS = {'train': 'pollen_train', 'val': 'pollen_val', 'test': 'pollen_test'}
@@ -64,8 +64,16 @@ def make_dirs(data_root, pid):
 
 # === COMPUTE MESH RADIUS ===
 def compute_radius(obj):
+    # Ensure the object's matrix_world is up-to-date if it has been transformed
+    # For this script, obj.location is (0,0,0) when this is called by rotate_and_render
+    # after center_and_scale, so matrix_world is effectively identity if no other parent transforms.
+    # If obj.location wasn't (0,0,0), obj.matrix_world @ v.co would be essential.
+    if not obj.data.vertices: # Handle case with no vertices
+        return 0.0
     vs = [obj.matrix_world @ v.co for v in obj.data.vertices]
-    return max((v - obj.location).length for v in vs)
+    # Assuming obj.location is (0,0,0) as per center_and_scale
+    return max(v.length for v in vs) if vs else 0.0
+
 
 # === WRITE CAMERA FILES ===
 def write_intrinsics(data_root, pid):
@@ -94,10 +102,10 @@ def write_intrinsics(data_root, pid):
 
 
 def write_near_far(data_root, pid, mesh_r):
-    near = max(RADIUS - mesh_r, 0.1)
+    near = max(RADIUS - mesh_r, 0.1) # mesh_r will be TARGET
     far = RADIUS + mesh_r
-    for split_folder in SPLITS.values():
-        out_dir = os.path.join(data_root, split_folder, pid)
+    for split_folder_name in SPLITS.values():
+        out_dir = os.path.join(data_root, split_folder_name, pid)
         os.makedirs(out_dir, exist_ok=True)
         with open(os.path.join(out_dir, 'near_far.txt'), 'w') as f:
             f.write(f"{near:.6f} {far:.6f}")
@@ -120,22 +128,33 @@ def center_and_scale(obj, target_radius):
     obj.location = (0,0,0)
     obj.rotation_euler = (0,0,0)
     obj.scale = (1,1,1)
-    bpy.context.view_layer.update()
+    bpy.context.view_layer.update() # Ensure transforms are applied before computing radius
 
-    # compute current radius
-    vs = [obj.matrix_world @ v.co for v in obj.data.vertices]
-    r = max((v - obj.location).length for v in vs)
-    if r == 0: return
+    # compute current radius using local coordinates as object is at origin with no rotation/scale
+    if not obj.data.vertices:
+        print(f"Warning: Object {obj.name} has no vertices.")
+        return
+    
+    # Calculate radius from local vertex coordinates, as object is at origin and unscaled
+    r = 0.0
+    # Ensure mesh data is available
+    if obj.type == 'MESH' and obj.data:
+        if len(obj.data.vertices) > 0:
+            r = max(v.co.length for v in obj.data.vertices)
+    
+    if r == 0: 
+        print(f"Warning: Object {obj.name} has zero radius before scaling (or is not a mesh with vertices).")
+        return
 
     # scale so new radius == target_radius
     s = target_radius / r
     obj.scale = (s, s, s)
-    bpy.context.view_layer.update()
+    bpy.context.view_layer.update() # Apply scale
 
     # re‑origin & bake scale
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    obj.location = (0,0,0)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True) # Bake scale
+    obj.location = (0,0,0) # Re-center object origin at world origin
     bpy.context.view_layer.update()
 
 
@@ -143,51 +162,58 @@ def center_and_scale(obj, target_radius):
 def rotate_and_render(data_root, pid, obj, cam):
     make_dirs(data_root, pid)
     write_intrinsics(data_root, pid)
-    mesh_r = compute_radius(obj)
+    
+    # After center_and_scale, obj is at origin, baked scale.
+    # So, compute_radius will give the target_radius if obj.location is (0,0,0).
+    # Or, more directly, mesh_r IS the target_radius it was scaled to.
+    # To be safe, let's use the TARGET value passed implicitly via obj's new scaled size.
+    # The target_radius used in center_and_scale is what mesh_r should be.
+    # We retrieve it from the object's current state.
+    mesh_r = 0.0
+    if obj.type == 'MESH' and obj.data and len(obj.data.vertices) > 0:
+         mesh_r = max(v.co.length for v in obj.data.vertices) # Vertices are now in local scaled coords
+                                                              # obj.location is (0,0,0)
+                                                              # obj.scale is (1,1,1) after apply
+    
+    if mesh_r == 0: # Fallback if something went wrong, though TARGET should be > 0
+        print(f"Error: Mesh radius for {pid} is zero after scaling. Using a fallback for near/far.")
+        # This indicates an issue with the object or scaling if TARGET was non-zero.
+        # For safety, use a fraction of RADIUS if mesh_r is 0 and TARGET was meant to be positive
+        # This part needs to align with the TARGET_FACTOR logic.
+        # If TARGET was RADIUS * TARGET_FACTOR, then mesh_r should be that value.
+        # Let's assume TARGET was correctly applied.
+        # The `mesh_r` used for `write_near_far` should be the `TARGET` value used in `center_and_scale`.
+        # We can re-calculate it here for consistency or pass `TARGET` to this function.
+        # For simplicity, re-calculate based on the known TARGET_FACTOR if needed,
+        # or better, trust that compute_radius on the scaled object gives the value.
+        # The call to compute_radius() at the start of this function should give the correct value.
+        mesh_r = compute_radius(obj) # This re-evaluates the scaled object.
+        
     write_near_far(data_root, pid, mesh_r)
 
     scene = bpy.context.scene
     scene.camera = cam
     scene.render.resolution_x = IMG_RES
     scene.render.resolution_y = IMG_RES
+    scene.render.pixel_aspect_x = 1.0
+    scene.render.pixel_aspect_y = 1.0
     scene.render.film_transparent = True
     scene.render.image_settings.file_format = 'PNG'
     scene.render.image_settings.color_mode = 'RGBA'
 
-    # --- MODIFICATIONS START HERE ---
-
-    # 1. Generate VIEWS points for the full sphere.
-    #    Change 'n = VIEWS * 2' to 'n_total_sphere_points = VIEWS'.
-    #    This means your 'VIEWS' variable will directly control the number of
-    #    points distributed over the entire sphere.
-    n_total_sphere_points = VIEWS  # MODIFIED LINE (previously n = VIEWS * 2)
+    n_total_sphere_points = VIEWS 
     
     idxs = arange(n_total_sphere_points)
     golden = (1 + 5**0.5) / 2
     theta = 2 * pi * idxs / golden
-    # Use n_total_sphere_points for the calculation of phi
-    phi = arccos(1 - 2 * (idxs + 0.5) / n_total_sphere_points) # MODIFIED LINE (denominator changed)
-
-    # 2. Remove or comment out the hemisphere mask to use all generated points.
-    #    These lines originally restricted views to the upper hemisphere.
-    # ---- COMMENT OUT OR DELETE THE FOLLOWING TWO LINES ----
-    # mask = (phi > pi/2) & (phi < 3*pi/2)
-    # theta, phi = theta[~mask], phi[~mask]
-    # ---- END OF COMMENTED OUT/DELETED LINES ----
-
-    # Now, theta and phi arrays correspond to n_total_sphere_points
-    # distributed over the entire sphere.
-    
-    # --- MODIFICATIONS END HERE ---
+    phi = arccos(1 - 2 * (idxs + 0.5) / n_total_sphere_points)
 
     x = RADIUS * cos(theta) * sin(phi)
     y = RADIUS * sin(theta) * sin(phi)
     z = RADIUS * cos(phi)
 
     counters = {'train': 0, 'val': 0, 'test': 0}
-    # The loop will now iterate VIEWS times (since n_total_sphere_points = VIEWS),
-    # using all the points generated for the full sphere.
-    for i in range(n_total_sphere_points): # Effectively 'for i in range(VIEWS):'
+    for i in range(n_total_sphere_points): 
         pos = mathutils.Vector((x[i], y[i], z[i]))
         cam.location = pos
         cam.rotation_euler = (-pos.normalized()).to_track_quat('-Z', 'Y').to_euler()
@@ -206,13 +232,11 @@ def rotate_and_render(data_root, pid, obj, cam):
 
 # === MAIN ENTRY POINT ===
 def main():
-    # Clear everything, then create camera + lights once
     clear_scene()
     cam_data = bpy.data.cameras.new("Camera")
     cam = bpy.data.objects.new("Camera", cam_data)
     bpy.context.collection.objects.link(cam)
     
-    # Your light setup code is here (key, fill, rim lights)
     key = bpy.data.lights.new("KeyLight", 'AREA')
     key.energy = 1500; key.size = RADIUS * 0.8
     kl = bpy.data.objects.new("KeyLight", key); kl.location = (RADIUS, RADIUS, RADIUS)
@@ -226,51 +250,43 @@ def main():
     rl = bpy.data.objects.new("RimLight", rim); rl.location = (0, -RADIUS, RADIUS)
     bpy.context.collection.objects.link(rl)
 
-    # !!! --- BEGIN CRITICAL CAMERA SYNCHRONIZATION CODE --- !!!
-    # This ensures Blender's render camera matches your intrinsics.txt parameters.
     scene = bpy.context.scene
-    # 'cam' is the camera object created above
-    # cam_data is cam.data (the camera data-block)
+    cam_data = cam.data 
 
-    # Set sensor fit mode. 'HORIZONTAL' means sensor_width is the reference for FoV.
     cam_data.sensor_fit = 'HORIZONTAL' 
-    # Set a reference sensor width in mm. 36mm is common.
-    # If your FX/FY were derived assuming a different sensor width, adjust this.
     cam_data.sensor_width = 36.0  
-
-    # Calculate Blender's focal length in mm to match your FX (pixel focal length)
-    # Formula: FX = f_mm * (Image_Width_In_Pixels / sensor_width_mm)
-    # So, f_mm = FX * (sensor_width_mm / Image_Width_In_Pixels)
-    f_in_mm = FX * (cam_data.sensor_width / IMG_RES) # IMG_RES is your image width
-    cam_data.lens = f_in_mm # Sets Blender's camera focal length
-
-    # Set principal point shifts.
-    # Your CX and CY are IMG_RES / 2.0, meaning the principal point is the image center.
-    # In Blender, this corresponds to zero shift from the sensor center.
-    cam_data.shift_x = 0.0  # Corresponds to CX = IMG_RES / 2
-    cam_data.shift_y = 0.0  # Corresponds to CY = IMG_RES / 2 
-                            # This assumes square pixels, which is Blender's default.
-    
-    # Ensure render resolution and pixel aspect ratio are set
-    # (These are also set in rotate_and_render, but good to have defined early)
+    f_in_mm = FX * (cam_data.sensor_width / IMG_RES) 
+    cam_data.lens = f_in_mm 
+    cam_data.shift_x = 0.0  
+    cam_data.shift_y = 0.0  
+                               
     scene.render.resolution_x = IMG_RES
     scene.render.resolution_y = IMG_RES
     scene.render.pixel_aspect_x = 1.0
     scene.render.pixel_aspect_y = 1.0
-    # !!! --- END CRITICAL CAMERA SYNCHRONIZATION CODE --- !!!
 
-    # Process each STL
     for fn in sorted(os.listdir(STL_DIR)):
         if not fn.lower().endswith('.stl'): continue
-        # clear only previous mesh
         clear_meshes()
         stl_path = os.path.join(STL_DIR, fn)
         import_stl(stl_path)
+        
+        if not bpy.context.selected_objects:
+            print(f"Warning: No object selected after importing {fn}. Skipping.")
+            continue
         obj = bpy.context.selected_objects[0]
+        
         pid = os.path.splitext(fn)[0]
         obj.name = pid
-        TARGET = RADIUS * 0.4   # You've set this and decided to accept the resulting size variation
+        
+        fov_factor = (IMG_RES / 2.0) / FX
+        TARGET = RADIUS * fov_factor
+        print(f"Processing {pid}, TARGET world radius set to: {TARGET:.4f}")
         center_and_scale(obj, TARGET)
+        
+        # After center_and_scale, the object's new max radius in local coords is TARGET.
+        # mesh_r for write_near_far should be this TARGET value.
+        # rotate_and_render will call compute_radius which should correctly get this value.
         rotate_and_render(DATA_ROOT, pid, obj, cam)
         
     print("✅ All done.")
