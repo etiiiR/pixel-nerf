@@ -37,21 +37,21 @@ def extra_args(parser):
         help="Output image size: one or two ints (W H)",
     )
     parser.add_argument("--focal", type=float, default=131.25, help="Focal length")
-    parser.add_argument("--radius", type=float, default=1.5, help="Camera distance")
-    parser.add_argument("--z_near", type=float, default=2)
-    parser.add_argument("--z_far", type=float, default=7.8)
-    parser.add_argument("--elevation", "-e", type=float, default=0.0,
+    parser.add_argument("--radius", type=float, default=2, help="Camera distance")
+    parser.add_argument("--z_near", type=float, default=0.01)
+    parser.add_argument("--z_far", type=float, default=4)
+    parser.add_argument("--elevation", "-e", type=float, default=5.0,
                         help="Elevation angle (neg=above)")
-    parser.add_argument("--num_views", type=int, default=32,
+    parser.add_argument("--num_views", type=int, default=50,
                         help="Number of rotated render views")
-    parser.add_argument("--fps", type=int, default=15, help="FPS for video")
+    parser.add_argument("--fps", type=int, default=25, help="FPS for video")
     parser.add_argument("--gif", action="store_true", help="Export GIF instead of MP4")
     parser.add_argument("--no_vid", action="store_true",
                         help="Skip video export (images only)")
     # Mesh-specific args
     parser.add_argument("--mesh_res", type=int, default=256,
                         help="Marching Cubes grid resolution")
-    parser.add_argument("--mesh_thresh", type=float, default=10.0,
+    parser.add_argument("--mesh_thresh", type=float, default=10,
                         help="Density threshold for isosurface")
     return parser
 
