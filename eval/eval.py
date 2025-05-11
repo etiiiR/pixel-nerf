@@ -33,7 +33,7 @@ def extra_args(parser):
     parser.add_argument("--write_compare", action="store_true")
     parser.add_argument("--free_pose", action="store_true")
     parser.add_argument("--mesh_res", type=int, default=256)
-    parser.add_argument("--mesh_thresh", type=float, default=1.0)
+    parser.add_argument("--mesh_thresh", type=float, default=0.1)
     return parser
 
 
